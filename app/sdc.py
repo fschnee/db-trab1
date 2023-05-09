@@ -15,6 +15,7 @@ class Column:
     is_pk: bool          = False
     reference: Reference = None # Some other table.
     nullable: bool       = False
+    serial: bool         = False
 
     def escape(self, val: str): # Make input val SQL-comparable with this column.
         if self.type is not None: pass # TODO: implement me!
@@ -30,15 +31,16 @@ class SDC:
 
     has_list_page: bool = True
     has_maint_page: bool = True
+    has_data_entry: bool = False
 
     def escape(self, column_name, val): return [c for c in self.columns if c.name == column_name][0].escape(val)
 
     def get_sdi_key(self, sdi):
         pks = list( filter(lambda c: c.is_pk, self.columns) )
-        values = [ sdi[pk.name] for pk in pks ]
+        values = [ str(sdi[pk.name]) for pk in pks ]
         return ";".join(values)
 
     def get_sdi_reference_key(self, sdi, sdc: str):
         fks = list( filter(lambda c: c.reference is not None and c.reference.table == sdc, self.columns) )
-        values = [ sdi[fk.name] for fk in fks ]
+        values = [ str(sdi[fk.name]) for fk in fks ]
         return ";".join(values)

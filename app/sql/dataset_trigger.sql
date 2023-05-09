@@ -1,4 +1,4 @@
- CREATE OR REPLACE FUNCTION create_data_items()
+CREATE OR REPLACE FUNCTION create_data_items()
 RETURNS TRIGGER AS $$
 DECLARE
   param_list_id VARCHAR(30);
@@ -9,11 +9,11 @@ BEGIN
   SELECT ParamList INTO param_list_id FROM DataSet WHERE DataSetId = NEW.DataSetId;
 
   -- Get all ParamItems associated with the ParamList
-  FOR param_item_id IN (SELECT ParamItem FROM ParamList WHERE ParamListId = param_list_id)
+  FOR param_item_id IN (SELECT ParamId FROM ParamItem WHERE ParamList = param_list_id)
   LOOP
     -- Create a new DataItem for each ParamItem
-    INSERT INTO DataItem (DataItemId, DataParamId, DataSet)
-    VALUES (uuid_generate_v4(), param_item_id, NEW.DataSetId);
+    INSERT INTO DataItem (DataParamId, DataSet)
+    VALUES (param_item_id, NEW.DataSetId);
   END LOOP;
 
   RETURN NEW;

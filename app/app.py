@@ -47,11 +47,11 @@ sdclist = [
         Column('workarea',         'Work Area',   None, reference=Reference('workarea', 'workareaid')),
     ]),
     SDC(table='product', displayname='Product', displaynameplural='Product', columns=[
-        Column('productid',      'ID',              None, is_pk=True),
-        Column('producttype',    'Type',            None, nullable=True),
-        Column('productdesc',    'Description',     None),
-        Column('createdby',      'Created By',      None, nullable=True, reference=Reference('employee', 'employeeid')),
-        Column('productlevelid', 'Prouct Level ID', None, reference=Reference('productlevel', 'productlevelid')),
+        Column('productid',      'ID',               None, is_pk=True),
+        Column('producttype',    'Type',             None, nullable=True),
+        Column('productdesc',    'Description',      None),
+        Column('createdby',      'Created By',       None, nullable=True, reference=Reference('employee', 'employeeid')),
+        Column('productlevelid', 'Product Level ID', None, reference=Reference('productlevel', 'productlevelid')),
     ]),
     SDC(table='paramlist', displayname='Parameter List', displaynameplural='Parameters Lists', columns=[
         Column('paramlistid',   'ID',            None, is_pk=True),
@@ -67,14 +67,14 @@ sdclist = [
         Column('paramlist', 'ParamList',   None, reference=Reference('paramlist', 'paramlistid')),
     ]),
     SDC(table='dataset', displayname='Data Set', displaynameplural='Data Sets', columns=[
-        Column('datasetid',         'ID',             None, is_pk=True),
+        Column('datasetid',         'ID',             None, is_pk=True, serial=True),
         Column('datasetcreatedate', 'Create Date',    None, nullable=True),
         Column('datasetstatus',     'Status',         None, nullable=True),
         Column('datasettype',       'Type',           None, nullable=True),
         Column('datasetdesc',       'Description',    None),
         Column('paramlist',         'Parameter List', None, reference=Reference('paramlist', 'paramlistid')),
         Column('product',           'Product',        None, reference=Reference('product', 'productid'))
-    ], has_maint_page=False),
+    ], has_data_entry=True),
     SDC(table='dataitem', displayname='Data Item', displaynameplural='Data Item', columns=[
         Column('dataitemid',     'ID',           None, is_pk=True),
         Column('dataparamid',    'Parameter ID', None, reference=Reference('paramitem', 'paramid')),
@@ -112,11 +112,11 @@ def new_maint(sdcid):
     sdc = sdcs[sdcid.lower()]
 
     if request.method == 'POST':
-        pk_column_names = [e.name for e in filter(lambda c: c.is_pk, sdc.columns)]
-        vals = {k: sdc.escape(k, v) for k, v in dict(request.form).items()}
-        sdi_pk = db.run(f'INSERT INTO {sdc.table} ({", ".join(vals.keys())}) VALUES ({", ".join(vals.values())}) RETURNING {pk_column_names[0]}')
+        pk   = [e for e in filter(lambda c: c.is_pk, sdc.columns)][0]
+        vals = {k: sdc.escape(k, v) for k, v in dict(request.form).items() if k != pk.name or (k == pk.name and not pk.serial)}
+        sdi_pk = db.run(f'INSERT INTO {sdc.table} ({", ".join(vals.keys())}) VALUES ({", ".join(vals.values())}) RETURNING {pk.name}')[0]
 
-        return redirect(f'/maint/{sdcid}/{sdi_pk[0][pk_column_names[0]]}')
+        return redirect(f'/maint/{sdcid}/{sdi_pk[pk.name]}')
 
     else:
         return maint(sdcid, sdi=None, new=True)
@@ -145,6 +145,21 @@ def maint(sdcid, sdi, new=False):
     ref_options = {c.name: [v[c.reference.column] for v in db.run(f'SELECT DISTINCT {c.reference.table}.{c.reference.column} FROM {c.reference.table}')] for c in ref_cols}
 
     return render_template('maint.html', new=new, sdclist=sdclist, sdc=sdc, sdi=sdi, ref_options=ref_options)
+
+@app.route('/dataentry/<dataset>')
+def dataentry(dataset):
+    sdc = sdcs['dataset']
+
+    pks = dataset.split(';')
+    pk_columns = [e for e in filter(lambda c: c.is_pk, sdc.columns)]
+    assert len(pks) == len(pk_columns)
+
+    wheres = [f'{sdc.table}.{col.name} = {col.escape(val)}' for col, val in zip(pk_columns, pks)]
+    sdi = db.run(f'SELECT * FROM {sdc.table} WHERE ' + ' AND '.join(wheres))[0]
+
+    dataitems = db.run(f'SELECT di.* FROM dataitem di JOIN dataset ds on di.dataset = ds.datasetid')
+
+    return render_template('dataentry.html', sdclist=sdclist, sdc=sdc, sdi=sdi, dataitems=dataitems)
 
 @app.route('/debug/reinit')
 def reinit():

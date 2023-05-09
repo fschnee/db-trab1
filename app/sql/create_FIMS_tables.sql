@@ -192,8 +192,10 @@ Foreign Key (Product) References Product(ProductId)
 
 -- Creating DataItem Table
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 Create Table DataItem (
-DataItemId VARCHAR (30) NOT NULL,
+DataItemId uuid DEFAULT uuid_generate_v4 (),
 DataParamId VARCHAR (30) NOT NULL,
 DataItemValue VARCHAR (30),
 DataItemStatus VARCHAR (30),
