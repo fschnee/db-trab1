@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 @dataclass
@@ -23,11 +23,19 @@ class Column:
         else:           return f"'{val}'"
 
 @dataclass
+class PseudoColumn:
+    name: str
+    displayname: str
+    select: str
+    join: str
+
+@dataclass
 class SDC:
     table: str
     displayname: str
     displaynameplural: str
     columns: List[Column]
+    pseudocolumns: List[PseudoColumn] = field(default_factory=lambda: [])
 
     has_list_page: bool = True
     has_maint_page: bool = True

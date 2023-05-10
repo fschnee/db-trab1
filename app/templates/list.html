@@ -12,21 +12,22 @@
 <table class="table">
   <thead><tr>
     {% for column in sdc.columns | selectattr("listable") %}<th>{{ column.displayname }}</th>{% endfor %}
+    {% for column in sdc.pseudocolumns %}<th>{{ column.displayname }} <small class="text-muted badge">pseudo</small></th>{% endfor %}
   </tr></thead>
 
   <form method="post">
-      {#
-      <div class="form-group">
-        <label for="location-id">Location ID</label>
-        <input type="text" class="form-control" id="location-id" name="location_id" placeholder="Enter Location ID">
-      </div>
-      <div class="form-group">
-        <label for="location-desc">Location Description</label>
-        <input type="text" class="form-control" id="location-desc" name="location_desc" placeholder="Enter Location Description">
-      </div>
-      <button type="submit" class="btn btn-primary">Submit</button>
-      #}
-    </form>
+    {#
+    <div class="form-group">
+      <label for="location-id">Location ID</label>
+      <input type="text" class="form-control" id="location-id" name="location_id" placeholder="Enter Location ID">
+    </div>
+    <div class="form-group">
+      <label for="location-desc">Location Description</label>
+      <input type="text" class="form-control" id="location-desc" name="location_desc" placeholder="Enter Location Description">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+    #}
+  </form>
 
   <tbody>
     {% for sdi in sdis %}
@@ -38,11 +39,15 @@
             {% elif column.reference != None and sdi[column.name] != None %}
               <a href="/maint/{{ column.reference.table }}/{{ sdc.get_sdi_reference_key(sdi, column.reference.table) }}">{{ sdi[column.name] }}</a>
             {% elif sdi[column.name] == None %}
-              <small class="text-muted">nil</small>
+              <small class="text-muted badge">nil</small>
             {% else %}
               {{ sdi[column.name] }}
             {% endif %}
           </td>
+        {% endfor %}
+
+        {% for column in sdc.pseudocolumns %}
+          <td>{{ sdi[column.name] }}</td>
         {% endfor %}
       </tr>
     {% endfor %}

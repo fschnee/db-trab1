@@ -52,6 +52,9 @@ sdclist = [
         Column('productdesc',    'Description',      None),
         Column('createdby',      'Created By',       None, nullable=True, reference=Reference('employee', 'employeeid')),
         Column('productlevelid', 'Product Level ID', None, reference=Reference('productlevel', 'productlevelid')),
+    ], pseudocolumns=[
+        PseudoColumn('datasets',  'Datasets',   'coalesce(ds.count, 0)', 'LEFT JOIN (SELECT count(*) as count, ds.product FROM dataset ds GROUP BY ds.product) ds ON ds.product = product.productid'),
+        PseudoColumn('dataitems', 'Data Items', 'coalesce(di.count, 0)', 'LEFT JOIN (SELECT count(*) as count, ds.product FROM dataitem di JOIN dataset ds ON di.dataset = ds.datasetid GROUP BY ds.product) di ON di.product = product.productid'),
     ]),
     SDC(table='paramlist', displayname='Parameter List', displaynameplural='Parameters Lists', columns=[
         Column('paramlistid',   'ID',            None, is_pk=True),
@@ -97,8 +100,17 @@ def index(): return render_template('index.html', sdclist=sdclist)
 def list(sdcid):
     sdc = sdcs[sdcid.lower()]
     columns = filter(lambda c: c.listable, sdc.columns)
-    sdis = db.run(f'SELECT {", ".join([f"{sdc.table}.{c.name}" for c in columns])} FROM {sdc.table}')
-    print(sdis)
+
+    if len(sdc.pseudocolumns):
+        sdis = db.run(f'''
+            SELECT
+                {", ".join([f"{sdc.table}.{c.name}" for c in columns])},
+                {", ".join(map(lambda c: f'{c.select} as {c.name}', sdc.pseudocolumns))}
+            FROM {sdc.table}
+            {" ".join(map(lambda c: c.join, sdc.pseudocolumns))}
+        ''')
+    else:
+        sdis = db.run(f'SELECT {", ".join([f"{sdc.table}.{c.name}" for c in columns])} FROM {sdc.table}')
 
     return render_template('list.html', sdclist=sdclist, sdc=sdc, sdis=sdis)
 
