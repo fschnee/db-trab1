@@ -12,8 +12,8 @@ BEGIN
   FOR param_item_id IN (SELECT ParamId FROM ParamItem WHERE ParamList = param_list_id)
   LOOP
     -- Create a new DataItem for each ParamItem
-    INSERT INTO DataItem (DataParamId, DataSet)
-    VALUES (param_item_id, NEW.DataSetId);
+    INSERT INTO DataItem (DataParamId, DataItemStatus, DataSet)
+    VALUES (param_item_id, 'Initial', NEW.DataSetId);
   END LOOP;
 
   RETURN NEW;

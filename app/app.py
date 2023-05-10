@@ -146,9 +146,28 @@ def maint(sdcid, sdi, new=False):
 
     return render_template('maint.html', new=new, sdclist=sdclist, sdc=sdc, sdi=sdi, ref_options=ref_options)
 
-@app.route('/dataentry/<dataset>')
+@app.route('/dataentry/<dataset>', methods=['GET', 'POST'])
 def dataentry(dataset):
     sdc = sdcs['dataset']
+
+    if request.method == 'POST':
+        sdc2 = sdcs['dataitem']
+
+        if any( map( lambda v: v not in ['', None], dict(request.form).values() ) ):
+            values = [
+                (sdc2.escape('dataitemid', id), sdc2.escape('dataitemstatus', 'Released'), sdc2.escape('dataitemvalue', val))
+                for id, val in dict(request.form).items()
+                if val not in ['', None]
+            ]
+            ids      = [id for (id, _, _) in values]
+            statuses = [f'WHEN {id} THEN {status}' for (id, status, _) in values]
+            values   = [f'WHEN {id} THEN {value}'  for (id, _, value) in values]
+            db.run(f'''
+                UPDATE dataitem SET
+                    dataitemstatus = CASE dataitemid {" ".join(statuses)} END,
+                    dataitemvalue  = CASE dataitemid {" ".join(values)}   END
+                WHERE dataitemid in ({", ".join(ids)})
+            ''', fetch=False)
 
     pks = dataset.split(';')
     pk_columns = [e for e in filter(lambda c: c.is_pk, sdc.columns)]
@@ -157,7 +176,12 @@ def dataentry(dataset):
     wheres = [f'{sdc.table}.{col.name} = {col.escape(val)}' for col, val in zip(pk_columns, pks)]
     sdi = db.run(f'SELECT * FROM {sdc.table} WHERE ' + ' AND '.join(wheres))[0]
 
-    dataitems = db.run(f'SELECT di.* FROM dataitem di JOIN dataset ds on di.dataset = ds.datasetid')
+    dataitems = db.run(f'''
+        SELECT di.*, paramdesc
+        FROM dataitem di
+            JOIN dataset ds  ON di.dataset = ds.datasetid
+            JOIN paramitem p ON di.dataparamid = p.paramid
+    ''')
 
     return render_template('dataentry.html', sdclist=sdclist, sdc=sdc, sdi=sdi, dataitems=dataitems)
 
