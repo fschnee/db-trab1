@@ -114,11 +114,6 @@ def list(sdcid):
 
     return render_template('list.html', sdclist=sdclist, sdc=sdc, sdis=sdis)
 
-@app.route('/debug/list/<sdcid>')
-def list_debug(sdcid):
-    sdc = sdcs[sdcid.lower()]
-    return [f'SELECT {",".join([c.name for c in sdc.columns])} FROM {sdc.table}', db.run(f'SELECT {",".join([c.name for c in sdc.columns])} FROM {sdc.table}')]
-
 @app.route('/new/<sdcid>', methods=['GET', 'POST'])
 def new_maint(sdcid):
     sdc = sdcs[sdcid.lower()]
@@ -204,8 +199,5 @@ def reinit():
     with open('app/sql/dataset_trigger.sql')    as f: dataset_trigger = f.read()
     db.run( schema_sql + master_data_sql + dataset_trigger, fetch = False)
     return (schema_sql + master_data_sql + dataset_trigger).replace('\n', '<br>')
-
-@app.route('/debug/pwd')
-def pwd(): return os.environ['PWD']
 
 if __name__ == "__main__": app.run(debug=True)
